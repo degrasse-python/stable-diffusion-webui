@@ -14,14 +14,13 @@ data "aws_subnet" "subnet_a" {
 }
 
 data "aws_subnet" "subnet_b" {
-  vpc_id = data.aws_vpc.default.id
+  vpc_id = data.aws_vpc.default_vpc.id
   cidr_block = "172.31.64.1/16"
 }
 
 data "aws_ami" "ubuntuServer_ami" {
   most_recent = true
   owners      = ["ubuntu"]
-  virtualization_type = "hvm"
   filter {
     name   = "architecture"
     values = ["arm64"]
@@ -45,6 +44,40 @@ data "aws_ec2_spot_price" "example" {
     values = ["Linux/UNIX"]
   }
 }
+
+# create SSL certificate for ELB 
+resource "aws_acm_certificate" "cert" {
+  domain_name       = "example.com"
+  validation_method = "DNS"
+}
+
+resource "aws_route53_zone" "zone" {
+  name = "example.com"
+  private_zone = false
+}
+resource "aws_route53_record" "www" {
+  zone_id = aws_route53_zone.zone.zone_id
+  name    = "www.example.com"
+  type    = "A"
+  ttl     = 300
+  records = [aws_eip.lb.public_ip]
+}
+
+
+resource "aws_route53_record" "cert_validation" {
+  zone_id = aws_route53_zone.zone.zone_id
+  # name    = aws_acm_certificate.cert.domain_validation_options.0.resource_record_name
+  name = aws_acm_certificate.cert.id
+  type = aws_acm_certificate.cert.type
+  records = [aws_acm_certificate.cert.validation_method.0.resource_record_value]
+  ttl     = 60
+}
+
+resource "aws_acm_certificate_validation" "cert" {
+  certificate_arn         = aws_acm_certificate.cert.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert : record.fqdn]
+}
+
 
 resource "aws_s3_bucket" "s3_sd_webui_app_logs" {
   bucket = "s3_sd_webui_app_logs"
@@ -127,19 +160,41 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_app_logs
   }
 }
 
-
-resource "aws_security_group" "security_group" {
+# Security Groups
+resource "aws_security_group" "allow_tls_ipv4_sd_webui_sg" {
   name = "sd-webui-sg"
   description = "Security group for Stable Diffusion WebUI EC2 instance"
+  vpc_id = data.aws_vpc.default_vpc.id
   ingress = [
     {
-      protocol = "tcp"
+      ip_protocol = "tcp"
       from_port = 22
       to_port = 22
       cidr_blocks = "0.0.0.0/0"
     },
     {
-      protocol = "tcp"
+      ip_protocol = "tcp"
+      from_port = 7860
+      to_port = 7860
+      cidr_blocks = "0.0.0.0/0"
+    }
+  ]
+}
+
+# Security Group for the Network Load Balancer
+resource "aws_security_group" "lb_sg" {
+  name = "sd-webui-sg"
+  description = "Security group for Stable Diffusion WebUI EC2 instance"
+  vpc_id = data.aws_vpc.default_vpc.id
+  ingress = [
+    {
+      ip_protocol = "tcp"
+      from_port = 22
+      to_port = 22
+      cidr_blocks = "0.0.0.0/0"
+    },
+    {
+      ip_protocol = "tcp"
       from_port = 7860
       to_port = 7860
       cidr_blocks = "0.0.0.0/0"
@@ -155,7 +210,7 @@ resource "aws_instance" "ec2_instance" {
   ami = "ami-0a75bd84854bc95c9"
   instance_type = "g4dn.xlarge"
   security_groups = [
-    aws_security_group.security_group.name
+    aws_security_group.sd-webui-sg.name
   ]
   user_data =  <<-EOF
                 #!/bin/bash
@@ -184,12 +239,14 @@ resource "aws_instance" "sd_webui_spot_instance" {
   }
 }
 
+
+
 resource "aws_lb" "network_load_balancer" {
   name               = "sd-webui-nlb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.lb_sg.id]
-  subnets            = [subnet_a.id, subnet_b] 
+  subnets            = [subnet_a.id, subnet_b.id] 
   enable_deletion_protection = true
 
   access_logs {
@@ -202,6 +259,52 @@ resource "aws_lb" "network_load_balancer" {
     Name = "SDWebUISpotInstance"
     Environment = "prod"
 
+  }
+}
+
+# Create a new load balancer
+resource "aws_elb" "s3_sd_webui_elb" {
+  name               = "sd-webui-nlb"
+  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+  access_logs {
+    bucket  = aws_s3_bucket.s3_sd_webui_lbaccess_logs.id
+    interval      = 60
+    enabled = true
+  }
+
+  listener {
+    instance_port     = 22
+    instance_protocol = "tcp"
+    lb_port           = 22
+    lb_protocol       = "tcp"
+  }
+
+  listener {
+    instance_port      = 7860
+    instance_protocol  = "tcp"
+    lb_port            = 7860
+    lb_protocol        = "tcp"
+    # create SSL certificate
+    ssl_certificate_id = "arn:aws:iam::123456789012:server-certificate/certName"
+  }
+
+  health_check {
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout             = 3
+    target              = "TCP:7860/"
+    interval            = 30
+  }
+
+  instances                   = [aws_instance.ec2_instance.id, aws_instance.sd_webui_spot_instance.id]
+  cross_zone_load_balancing   = true
+  idle_timeout                = 400
+  connection_draining         = true
+  connection_draining_timeout = 400
+
+  tags = {
+    Name = "s3-sd-webui-elb"
   }
 }
 
@@ -225,6 +328,7 @@ resource "aws_lb_listener" "sd_webui_listener" {
   load_balancer_arn = aws_lb.network_load_balancer.arn
   port              = "7860"
   protocol          = "TCP"
+  certificate_arn = aws_acm_certificate_validation.cert.certificate_arn
 
   default_action {
     type             = "forward"
