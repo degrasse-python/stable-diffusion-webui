@@ -1,7 +1,17 @@
 # Stable Diffusion deployed to AWS using Terraform Cloud
 
-[This is an example for the deployment of stable-diffusion-webui from AUTOMATIC1111.](https://github.com/AUTOMATIC1111/stable-diffusion-webui/) Below are the original docs as of the last push date. Check the Terraform folder for a clear example of something that scales with the needs of the GPU workload using spot instances on AWS. I'll do GCP at some point as well. A solutions document for the training of base models is in development at the moment.
+This is an example for the deployment of stable-diffusion-webui from automatic1111 - [link](https://github.com/AUTOMATIC1111/stable-diffusion-webui/). Below are the original docs as of this last fork date. 
 
+The purpose of my fork is to store a simple example of how to deploy the application for use without needing to program much. Below the introduction are instructions of how to change a few lines and deploy a simple private server for use with a GPU that is cheap to use ($10/month). See the Terraform folder for a clear example of something that scales with the needs of the GPU workload using spot instances on AWS. I'll do GCP at some point as well. 
+
+See the solutions doc in the Terraform folder for a quick and dirty explanation of all the tings you need to get started. A solutions document for the training of base models is in development at the moment.
+
+# Steps to deploy this using simple Terraform
+
+1. Install Terraform and test that it works with your local machine. (Install Terraform docs)[https://developer.hashicorp.com/terraform/install]
+2. Check that it works with AWS or your Cloud. (AWS)[https://developer.hashicorp.com/terraform/tutorials/aws-get-started]
+3. Change the admin user and password to reflect a USER:PASS created in your AWS account. These should be dynamic. Make sure you don't fork and store the password in your git.
+4. Use Route53 to setup your DNS.
 
 
 
