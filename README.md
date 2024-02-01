@@ -9,9 +9,16 @@ See the solutions doc in the Terraform folder for a quick and dirty explanation 
 # Steps to deploy this using simple Terraform
 
 1. Install Terraform and test that it works with your local machine. (Install Terraform docs)[https://developer.hashicorp.com/terraform/install]
-2. Check that it works with AWS or your Cloud. (AWS)[https://developer.hashicorp.com/terraform/tutorials/aws-get-started]
-3. Change the admin user and password to reflect a USER:PASS created in your AWS account. These should be dynamic. Make sure you don't fork and store the password in your git.
-4. Use Route53 to setup your DNS.
+2. Add the correct variables to your local machine or Terraform Cloud.
+
+    ```
+    AWS_SECRET_ACCESS_KEY=secret
+    AWS_ACCESS_KEY_ID=key
+    ```
+
+3. Check that it works with AWS or your Cloud. (AWS)[https://developer.hashicorp.com/terraform/tutorials/aws-get-started]
+4. Change the admin user and password to reflect a USER:PASS created in your AWS account. These should be dynamic. Make sure you don't fork and store the password in your git.
+5. Use Route53 to setup your DNS.
 
 
 

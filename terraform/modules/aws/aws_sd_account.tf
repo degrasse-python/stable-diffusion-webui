@@ -1,5 +1,5 @@
 provider "aws" {
-  region = "us-east-1" # Modify to your desired region
+  region = "us-east-2" # Modify to your desired region
   access_key = var.AWS_ACCESS_KEY_ID 
   secret_key = var.AWS_SECRET_ACCESS_KEY
 }
@@ -46,8 +46,8 @@ data "aws_ec2_spot_price" "example" {
   }
 }
 
-resource "aws_s3_bucket" "sd_webui_accesslogs" {
-  bucket = "sd-webui-accesslogs-bucket"
+resource "aws_s3_bucket" "s3_sd_webui_app_logs" {
+  bucket = "s3_sd_webui_app_logs"
 
   tags = {
     Name        = "sd_webui_accesslogs"
@@ -55,14 +55,24 @@ resource "aws_s3_bucket" "sd_webui_accesslogs" {
   }
 }
 
-# Create a KMS Key
-resource "aws_kms_key" "sd_webui_s3_bucket_key" {
+resource "aws_s3_bucket" "s3_sd_webui_lbaccess_logs" {
+  bucket = "sd-webui-lblogs-bucket"
+
+  tags = {
+    Name        = "s3_sd_webui_lbaccess_logs"
+    Environment = "prod"
+  }
+}
+
+# KMS Keys
+## sd_webui_lb_s3_bucket_key KMS key to secure the S3 bucket
+resource "aws_kms_key" "sd_webui_lb_s3_bucket_key" {
   description             = "KMS key for securing NLB S3 bucket"
   deletion_window_in_days = 10
 }
 
 resource "aws_s3_bucket_ownership_controls" "s3_bucket_key_onwership_controls" {
-  bucket = aws_s3_bucket.sd_webui_s3_bucket_key.id
+  bucket = aws_s3_bucket.s3_sd_webui_app_logs.id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
@@ -75,17 +85,48 @@ resource "aws_s3_bucket_acl" "secure_bucket" {
   acl    = "private"
 }
 
-
 resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_sse_config" {
-  bucket = aws_s3_bucket.sd_webui_accesslogs.id
+  bucket = aws_s3_bucket.s3_sd_webui_lbaccess_logs.id
 
   rule {
     apply_server_side_encryption_by_default {
-      kms_master_key_id = aws_kms_key.sd_webui_s3_bucket_key.arn
+      kms_master_key_id = aws_kms_key.sd_webui_lb_s3_bucket_key.arn
       sse_algorithm     = "aws:kms"
     }
   }
 }
+
+## sd_webui_app_logs_bucket_key KMS key to secure the S3 bucket
+resource "aws_kms_key" "sd_webui_app_logs_bucket_key" {
+  description             = "KMS key for securing S3 bucket"
+  deletion_window_in_days = 10
+}
+
+resource "aws_s3_bucket_ownership_controls" "s3_app_logs_bucket_key_onwership_controls" {
+  bucket = aws_s3_bucket.s3_sd_webui_lbaccess_logs.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+## server-side encryption using the KMS key
+resource "aws_s3_bucket_acl" "secure_app_logs_bucket" {
+  depends_on = [aws_s3_bucket_ownership_controls.s3_app_logs_bucket_key_onwership_controls] 
+  bucket = "sd-webui-applogs-bucket"
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_app_logs_sse_config" {
+  bucket = aws_s3_bucket.s3_sd_webui_app_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.sd_webui_app_logs_bucket_key.arn
+      sse_algorithm     = "aws:kms"
+    }
+  }
+}
+
 
 resource "aws_security_group" "security_group" {
   name = "sd-webui-sg"
@@ -152,7 +193,7 @@ resource "aws_lb" "network_load_balancer" {
   enable_deletion_protection = true
 
   access_logs {
-    bucket  = aws_s3_bucket.aws_s3_bucket.lb_logs.id
+    bucket  = aws_s3_bucket.s3_sd_webui_lbaccess_logs.id
     prefix  = "sd-webui-nlb"
     enabled = true
   }
