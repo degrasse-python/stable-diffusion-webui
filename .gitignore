@@ -37,3 +37,7 @@ notification.mp3
 /node_modules
 /package-lock.json
 /.coverage*
+.DS_Store
+configs/arthemyComics_v60.yaml
+configs/Goth_girl-v2.yaml
+configs/wizards_vintage_comics-Undergroundf16.yaml

@@ -1,7 +1,13 @@
-# Stable Diffusion web UI
-A browser interface based on Gradio library for Stable Diffusion.
+# Stable Diffusion deployed to AWS using Terraform Cloud
 
-![](screenshot.png)
+[This is an example for the deployment of stable-diffusion-webui from AUTOMATIC1111.](https://github.com/AUTOMATIC1111/stable-diffusion-webui/) Below are the original docs as of the last push date. Check the Terraform folder for a clear example of something that scales with the needs of the GPU workload using spot instances on AWS. I'll do GCP at some point as well. A solutions document for the training of base models is in development at the moment.
+
+
+
+
+# Stable Diffusion web UI
+
+A browser interface based on Gradio library for Stable Diffusion.
 
 ## Features
 [Detailed feature showcase with images](https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/Features):

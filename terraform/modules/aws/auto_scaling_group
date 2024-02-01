@@ -1,0 +1,85 @@
+
+data "aws_vpc" "default_vpc" {
+    default = true
+  }
+  
+  data "aws_subnet" "subnet_a" {
+    vpc_id = data.aws_vpc.default.id
+    cidr_block = "172.31.64.0/16"
+  }
+  
+  data "aws_subnet" "subnet_b" {
+    vpc_id = data.aws_vpc.default.id
+    cidr_block = "172.31.64.1/16"
+  }
+  
+  data "aws_ami" "ubuntuServer_ami" {
+    most_recent = true
+    owners      = ["ubuntu"]
+    filter {
+      name   = "architecture"
+      values = ["arm64"]
+    }
+    filter {
+      name   = "name"
+      values = ["ami-*"]
+    }
+  }
+  
+  data "aws_ami_ids" "ubuntuServer" {
+    owners = ["099720109477"]
+  
+    filter {
+      name   = "name"
+      values = ["ubuntu/images/ubuntu-*-*-amd64-server-*"]
+    }
+  }
+
+resource "aws_ec2_fleet" "my_eip" {
+  launch_template_config {
+    # Specify the required configuration for the launch template
+    launch_template_specification {
+      launch_template_id = aws_launch_template.launch_template.id
+      version = "$Latest"
+    }
+  }
+
+  target_capacity_specification {
+    total_target_capacity = 1
+    default_target_capacity_type = "spot"
+  }
+}
+
+resource "aws_eip_association" "my_eip_association" {
+  allocation_id = aws_ec2_fleet.my_eip.id
+  instance_id = aws_ec2_instance_state.ec2_instance.id
+}
+
+
+resource "aws_launch_template" "launch_template" {
+  name = "sd-webui-cf"
+  image_id = "ami-0574da719dca65348"
+  block_device_mappings {
+    device_name = "/dev/sda1"
+    ebs {
+      volume_size = 300
+      volume_type = "gp2"
+    }
+  }
+  security_group_names = [
+    aws_security_group.security_group.name
+  ]
+  user_data =  <<-EOF
+                #!/bin/bash
+                cd /home/ubuntu
+                git clone https://github.com/degrasse-python/stable-diffusion-webui.git
+                bash stable-diffusion-webui/setup.sh -y
+              EOF
+    
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "sd-webui-cf"
+    }
+  }
+}
