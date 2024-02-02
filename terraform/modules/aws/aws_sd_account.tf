@@ -9,7 +9,7 @@ data "aws_vpc" "default_vpc" {
 }
 
 data "aws_subnet" "subnet_a" {
-  vpc_id = data.aws_vpc.default.id
+  vpc_id = aws_vpc.default_vpc.id 
   cidr_block = "172.31.64.0/16"
 }
 
@@ -53,7 +53,6 @@ resource "aws_acm_certificate" "cert" {
 
 resource "aws_route53_zone" "zone" {
   name = "example.com"
-  private_zone = false
 }
 resource "aws_route53_record" "www" {
   zone_id = aws_route53_zone.zone.zone_id
@@ -75,7 +74,7 @@ resource "aws_route53_record" "cert_validation" {
 
 resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.cert.arn
-  validation_record_fqdns = [for record in aws_route53_record.cert : record.fqdn]
+  validation_record_fqdns = [for record in aws_route53_record.www : record.fqdn]
 }
 
 
@@ -161,45 +160,38 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_app_logs
 }
 
 # Security Groups
-resource "aws_security_group" "allow_tls_ipv4_sd_webui_sg" {
-  name = "sd-webui-sg"
+resource "aws_security_group" "allow_tls" {
+  name        = "allow_tls"
+  description = "Allow TLS inbound traffic and all outbound traffic"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "allow_tls"
+  }
+}
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
+  security_group_id = aws_security_group.allow_tls.id
   description = "Security group for Stable Diffusion WebUI EC2 instance"
-  vpc_id = data.aws_vpc.default_vpc.id
-  ingress = [
-    {
-      ip_protocol = "tcp"
-      from_port = 22
-      to_port = 22
-      cidr_blocks = "0.0.0.0/0"
-    },
-    {
-      ip_protocol = "tcp"
-      from_port = 7860
-      to_port = 7860
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
+  ip_protocol = "tcp"
+  from_port = 22
+  to_port = 22
+  cidr_ipv4 = "0.0.0.0/0"
 }
 
-# Security Group for the Network Load Balancer
-resource "aws_security_group" "lb_sg" {
-  name = "sd-webui-sg"
-  description = "Security group for Stable Diffusion WebUI EC2 instance"
-  vpc_id = data.aws_vpc.default_vpc.id
-  ingress = [
-    {
-      ip_protocol = "tcp"
-      from_port = 22
-      to_port = 22
-      cidr_blocks = "0.0.0.0/0"
-    },
-    {
-      ip_protocol = "tcp"
-      from_port = 7860
-      to_port = 7860
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
+resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
+  security_group_id = aws_security_group.allow_tls.id
+  cidr_ipv4         = data.aws_vpc.default_vpc.cidr_block
+  from_port         = 443
+  ip_protocol       = "tcp"
+  to_port           = 443
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
+  security_group_id = aws_security_group.allow_tls.id
+  cidr_ipv4         = data.aws_vpc.default_vpc.cidr_block
+  from_port         = 7860
+  ip_protocol       = "tcp"
+  to_port           = 7860
 }
 
 
@@ -210,7 +202,7 @@ resource "aws_instance" "ec2_instance" {
   ami = "ami-0a75bd84854bc95c9"
   instance_type = "g4dn.xlarge"
   security_groups = [
-    aws_security_group.sd-webui-sg.name
+    aws_security_group.allow_tls_ipv4_sd_webui_sg.id
   ]
   user_data =  <<-EOF
                 #!/bin/bash
