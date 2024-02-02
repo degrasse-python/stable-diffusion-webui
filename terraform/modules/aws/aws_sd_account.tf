@@ -4,19 +4,9 @@ provider "aws" {
   secret_key = var.AWS_SECRET_ACCESS_KEY
 }
 
-data "aws_vpc" "default_vpc" {
-  default = true
-}
 
-data "aws_subnet" "subnet_a" {
-  vpc_id = data.aws_vpc.default_vpc.id 
-  cidr_block = "172.31.64.0/16"
-}
 
-data "aws_subnet" "subnet_b" {
-  vpc_id = data.aws_vpc.default_vpc.id
-  cidr_block = "172.31.64.1/16"
-}
+
 
 data "aws_ami" "ubuntuServer_ami" {
   most_recent = true
@@ -43,6 +33,24 @@ data "aws_ec2_spot_price" "example" {
     name   = "product-description"
     values = ["Linux/UNIX"]
   }
+}
+
+##### ---------- Resources ---------- #####
+
+resource "aws_default_vpc" "default" {
+  tags = {
+    Name = "Default VPC"
+  }
+}
+
+data "aws_subnet" "subnet_a" {
+  vpc_id = aws_default_vpc.default.id 
+  cidr_block = "172.31.64.0/16"
+}
+
+data "aws_subnet" "subnet_b" {
+  vpc_id = aws_default_vpc.default.id 
+  cidr_block = "172.31.64.1/16"
 }
 
 # create SSL certificate for ELB 
@@ -164,15 +172,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_app_logs
 }
 
 # Security Groups
-resource "aws_security_group" "allow_tls" {
-  name        = "allow_tls"
-  description = "Allow TLS inbound traffic and all outbound traffic"
-  vpc_id      = data.aws_vpc.default_vpc.id
-
-  tags = {
-    Name = "allow_tls"
-  }
-}
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
   security_group_id = aws_security_group.allow_tls.id
   description = "Security group for Stable Diffusion WebUI EC2 instance"
@@ -184,7 +183,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
 
 resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
   security_group_id = aws_security_group.allow_tls.id
-  cidr_ipv4         = data.aws_vpc.default_vpc.cidr_block
+  cidr_ipv4         = aws_default_vpc.default.cidr_block
   from_port         = 443
   ip_protocol       = "tcp"
   to_port           = 443
@@ -192,7 +191,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
 
 resource "aws_vpc_security_group_ingress_rule" "allow_application_ipv4" {
   security_group_id = aws_security_group.allow_tls.id
-  cidr_ipv4         = data.aws_vpc.default_vpc.cidr_block
+  cidr_ipv4         = aws_default_vpc.default.cidr_block
   from_port         = 7860
   ip_protocol       = "tcp"
   to_port           = 7860
@@ -206,7 +205,7 @@ resource "aws_instance" "ec2_instance" {
   ami = "ami-0a75bd84854bc95c9"
   instance_type = "g4dn.xlarge"
   security_groups = [
-    aws_security_group.allow_tls_ipv4.id
+    aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
   ]
   user_data =  <<-EOF
                 #!/bin/bash
@@ -235,14 +234,13 @@ resource "aws_instance" "sd_webui_spot_instance" {
   }
 }
 
-
-
 resource "aws_lb" "network_load_balancer" {
   name               = "sd-webui-nlb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.allow_tls.id, aws_security_group.allow_application_ipv4.id]
-  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id] 
+  security_groups    = [aws_vpc_security_group_ingress_rule.allow_tls.id, 
+                        aws_vpc_security_group_ingress_rule.allow_application_ipv4.id]
+  subnets            = [data.aws_subnet.subnet_a.id, data.aws_subnet.subnet_b.id] 
   enable_deletion_protection = true
 
   access_logs {
