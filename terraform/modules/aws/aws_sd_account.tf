@@ -9,7 +9,7 @@ data "aws_vpc" "default_vpc" {
 }
 
 data "aws_subnet" "subnet_a" {
-  vpc_id = aws_vpc.default_vpc.id 
+  vpc_id = data.aws_vpc.default_vpc.id 
   cidr_block = "172.31.64.0/16"
 }
 
@@ -59,7 +59,11 @@ resource "aws_route53_record" "www" {
   name    = "www.example.com"
   type    = "A"
   ttl     = 300
-  records = [aws_eip.lb.public_ip]
+  alias {
+    name                   = aws_elb.s3_sd_webui_elb.dns_name
+    zone_id                = aws_elb.s3_sd_webui_elb.zone_id
+    evaluate_target_health = false
+  }
 }
 
 
@@ -68,7 +72,7 @@ resource "aws_route53_record" "cert_validation" {
   # name    = aws_acm_certificate.cert.domain_validation_options.0.resource_record_name
   name = aws_acm_certificate.cert.id
   type = aws_acm_certificate.cert.type
-  records = [aws_acm_certificate.cert.validation_method.0.resource_record_value]
+  records = [aws_acm_certificate.cert.validation_method.record_name]
   ttl     = 60
 }
 
@@ -77,7 +81,7 @@ resource "aws_acm_certificate_validation" "cert" {
   validation_record_fqdns = [for record in aws_route53_record.www : record.fqdn]
 }
 
-
+# S3 Buckets
 resource "aws_s3_bucket" "s3_sd_webui_app_logs" {
   bucket = "s3_sd_webui_app_logs"
 
@@ -104,7 +108,7 @@ resource "aws_kms_key" "sd_webui_lb_s3_bucket_key" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "s3_bucket_key_onwership_controls" {
-  bucket = aws_s3_bucket.s3_sd_webui_app_logs.id
+  bucket = aws_s3_bucket.s3_sd_webui_lbaccess_logs.id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
@@ -135,7 +139,7 @@ resource "aws_kms_key" "sd_webui_app_logs_bucket_key" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "s3_app_logs_bucket_key_onwership_controls" {
-  bucket = aws_s3_bucket.s3_sd_webui_lbaccess_logs.id
+  bucket = aws_s3_bucket.s3_sd_webui_app_logs.id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
@@ -163,7 +167,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_app_logs
 resource "aws_security_group" "allow_tls" {
   name        = "allow_tls"
   description = "Allow TLS inbound traffic and all outbound traffic"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = data.aws_vpc.default_vpc.id
 
   tags = {
     Name = "allow_tls"
@@ -202,7 +206,7 @@ resource "aws_instance" "ec2_instance" {
   ami = "ami-0a75bd84854bc95c9"
   instance_type = "g4dn.xlarge"
   security_groups = [
-    aws_security_group.allow_tls_ipv4_sd_webui_sg.id
+    aws_security_group.allow_tls_ipv4.id
   ]
   user_data =  <<-EOF
                 #!/bin/bash
@@ -237,8 +241,8 @@ resource "aws_lb" "network_load_balancer" {
   name               = "sd-webui-nlb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.lb_sg.id]
-  subnets            = [subnet_a.id, subnet_b.id] 
+  security_groups    = [aws_security_group.allow_tls.id, aws_security_group.allow_application_ipv4.id]
+  subnets            = [aws_subnet.subnet_a.id, aws_subnet.subnet_b.id] 
   enable_deletion_protection = true
 
   access_logs {
