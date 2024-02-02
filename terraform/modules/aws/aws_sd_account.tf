@@ -173,8 +173,17 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "sd_webui_app_logs
 }
 
 # Security Groups
+
+resource "aws_security_group" "sd_webui_secgroup" {
+  name        = "sd_webui_secgroup"
+  description = "aws_security_group"
+  vpc_id      = aws_default_vpc.default.id
+  tags = {
+    Name = "sd_webui_secgroup"
+  }
+}
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
-  security_group_id = aws_security_group.allow_tls.id
+  security_group_id = aws_security_group.sd_webui_secgroup.id
   description = "Security group for Stable Diffusion WebUI EC2 instance"
   ip_protocol = "tcp"
   from_port = 22
@@ -183,7 +192,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
-  security_group_id = aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
+  security_group_id = aws_security_group.sd_webui_secgroup.id
   cidr_ipv4         = aws_default_vpc.default.cidr_block
   from_port         = 443
   ip_protocol       = "tcp"
@@ -191,7 +200,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_application_ipv4" {
-  security_group_id = aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
+  security_group_id = aws_security_group.sd_webui_secgroup.id
   cidr_ipv4         = aws_default_vpc.default.cidr_block
   from_port         = 7860
   ip_protocol       = "tcp"
