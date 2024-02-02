@@ -248,7 +248,7 @@ resource "aws_lb" "network_load_balancer" {
   name               = "sd-webui-nlb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_vpc_security_group_ingress_rule.allow_tls.id, 
+  security_groups    = [aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id, 
                         aws_vpc_security_group_ingress_rule.allow_application_ipv4.id]
   subnets            = [data.aws_subnet.subnet_a.id, data.aws_subnet.subnet_b.id] 
   enable_deletion_protection = true
@@ -297,7 +297,7 @@ resource "aws_elb" "s3_sd_webui_elb" {
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 3
-    target              = "TCP:7860/"
+    target              = "TCP:7860"
     interval            = 30
   }
 
