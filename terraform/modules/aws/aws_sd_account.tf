@@ -74,15 +74,16 @@ resource "aws_route53_record" "www" {
   }
 }
 
-
+/*
 resource "aws_route53_record" "cert_validation" {
   zone_id = aws_route53_zone.zone.zone_id
   # name    = aws_acm_certificate.cert.domain_validation_options.0.resource_record_name
   name = aws_acm_certificate.cert.id
   type = aws_acm_certificate.cert.type
-  records = [aws_acm_certificate.cert.validation_method.record_name]
+  // records = [aws_acm_certificate.cert.validation_method.record_name]
   ttl     = 60
 }
+*/ 
 
 resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.cert.arn
@@ -182,7 +183,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh_ipv4" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
-  security_group_id = aws_security_group.allow_tls.id
+  security_group_id = aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
   cidr_ipv4         = aws_default_vpc.default.cidr_block
   from_port         = 443
   ip_protocol       = "tcp"
@@ -190,7 +191,7 @@ resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_application_ipv4" {
-  security_group_id = aws_security_group.allow_tls.id
+  security_group_id = aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
   cidr_ipv4         = aws_default_vpc.default.cidr_block
   from_port         = 7860
   ip_protocol       = "tcp"
@@ -306,7 +307,7 @@ resource "aws_lb_target_group" "nlb_target_group" {
   name     = "nlb-target-group"
   port     = 7860
   protocol = "TCP"
-  vpc_id   = data.aws_vpc.default_vpc.id  
+  vpc_id   = aws_default_vpc.default.id
 
   health_check {
     interval            = 30
