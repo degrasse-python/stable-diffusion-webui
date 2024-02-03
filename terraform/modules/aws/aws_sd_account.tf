@@ -59,14 +59,17 @@ resource "aws_acm_certificate" "cert" {
   validation_method = "DNS"
 }
 
+/*
 resource "aws_route53_zone" "zone" {
   name = "example.com"
 }
+
 resource "aws_route53_record" "www" {
   zone_id = aws_route53_zone.zone.zone_id
   name    = "www.example.com"
   type    = "A"
   ttl     = 300
+  records = [aws_acm_certificate.cert.validation_method.record_name]
   alias {
     name                   = aws_elb.s3_sd_webui_elb.dns_name
     zone_id                = aws_elb.s3_sd_webui_elb.zone_id
@@ -74,7 +77,7 @@ resource "aws_route53_record" "www" {
   }
 }
 
-/*
+
 resource "aws_route53_record" "cert_validation" {
   zone_id = aws_route53_zone.zone.zone_id
   # name    = aws_acm_certificate.cert.domain_validation_options.0.resource_record_name
@@ -83,12 +86,13 @@ resource "aws_route53_record" "cert_validation" {
   // records = [aws_acm_certificate.cert.validation_method.record_name]
   ttl     = 60
 }
-*/ 
+
 
 resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.cert.arn
   validation_record_fqdns = [for record in aws_route53_record.www : record.fqdn]
 }
+*/
 
 # S3 Buckets
 resource "aws_s3_bucket" "s3_sd_webui_app_logs" {
