@@ -248,7 +248,7 @@ resource "aws_instance" "ec2_instance" {
 }
 
 resource "aws_instance" "sd_webui_spot_instance" {
-  ami           = data.aws_ami.ubuntuServer_ami.id
+  ami           = "ami-06b74af9fe7907906" // data.aws_ami.ubuntuServer_ami.id
   # instance_type Specs: 4core Intel Xeon E5-2686 v4 Processor, 61GB mem, GPU 12GiB
   instance_type = "p2.xlarge"  
   key_name      = "sd-webui-key" 
