@@ -261,7 +261,7 @@ resource "aws_instance" "ec2_instance" {
 resource "aws_instance" "sd_webui_spot_instance" {
   ami           = "ami-02e85f615dfa5a237" // data.aws_ami.ubuntuServer_ami.id
   # instance_type Specs: 4core Intel Xeon E5-2686 v4 Processor, 61GB mem, GPU 12GiB
-  instance_type = "p2.xlarge"  
+  instance_type = "g4ad.xlarge" // "p2.xlarge"  
   key_name      = "sd-webui-key"
   security_groups = [
     aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id

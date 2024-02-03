@@ -66,8 +66,8 @@ def webui():
 
         if not cmd_opts.no_gradio_queue:
             shared.demo.queue(64)
-
-        gradio_auth_creds = list(initialize_util.get_gradio_auth_creds()) or None
+        # TODO: change creds to receive creds from the sys environment
+        gradio_auth_creds = [("admin", "5thadmin123*"), ] # list(initialize_util.get_gradio_auth_creds()) or None
 
         auto_launch_browser = False
         if os.getenv('SD_WEBUI_RESTARTING') != '1':
