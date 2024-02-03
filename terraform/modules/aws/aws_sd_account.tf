@@ -251,7 +251,11 @@ resource "aws_instance" "ec2_instance" {
   ]
   user_data =  <<-EOF
                 #!/bin/bash
+                
                 cd /home/ubuntu
+                sudo apt install wget git python3 python3-venv libgl1 libglib2.0-0 -y
+                mkdir stable-diffusion-webui && cd stable-diffusion-webui
+                wget -q https://raw.githubusercontent.com/degrasse-python/stable-diffusion-webui/master/webui.sh
                 git clone
                 bash stable-diffusion-webui/setup.sh -y
               EOF
