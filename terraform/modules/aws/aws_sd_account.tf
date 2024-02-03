@@ -222,7 +222,6 @@ resource "aws_vpc_security_group_ingress_rule" "allow_application_ipv4" {
   to_port           = 7860
 }
 
-# rsa.pub for the key pair
 
 
 # create a new EC2 instance with ubuntu server 20.04 LTS with a gpu instance type
@@ -252,10 +251,10 @@ resource "aws_instance" "ec2_instance" {
 }
 */
 
-resource "aws_instance" "ec2_instance" {
+resource "aws_instance" "sd_webui_spot_instance" {
   ami           = "ami-02e85f615dfa5a237" // data.aws_ami.ubuntuServer_ami.id
   # instance_type Specs: 4core Intel Xeon E5-2686 v4 Processor, 61GB mem, GPU 12GiB
-  instance_type = "g4ad.xlarge" // "p2.xlarge"  
+  instance_type = "g4ad.xlarge" //p2.xlarge"  
   key_name      = "sd-webui-key"
   security_groups = [
     aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
@@ -338,7 +337,7 @@ resource "aws_elb" "s3_sd_webui_elb" {
     interval            = 30
   }
 
-  instances                   = [aws_instance.ec2_instance.id, aws_instance.sd_webui_spot_instance.id]
+  instances                   = [ aws_instance.sd_webui_spot_instance.id] // aws_instance.ec2_instance.id,
   cross_zone_load_balancing   = true
   idle_timeout                = 400
   connection_draining         = true
