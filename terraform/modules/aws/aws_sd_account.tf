@@ -222,13 +222,23 @@ resource "aws_vpc_security_group_ingress_rule" "allow_application_ipv4" {
   to_port           = 7860
 }
 
+# rsa.pub for the key pair
+
+
+# Key Pair for EC2 instance
+resource "aws_key_pair" "sd_webui_key" {
+  key_name   = "sd-webui-key"
+  public_key = file("~/.ssh/id_rsa.pub")
+}
 
 # create a new EC2 instance with ubuntu server 20.04 LTS with a gpu instance type
 # and attach the security group created above to it and run the user data script 
 # to install the webui and start the server on port 7860 
+/*
 resource "aws_instance" "ec2_instance" {
-  ami = "ami-0a75bd84854bc95c9"
+  ami = "ami-02e85f615dfa5a237"
   instance_type = "g4dn.xlarge"
+  key_name      = "sd-webui-key"
   security_groups = [
     aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
   ]
@@ -246,22 +256,36 @@ resource "aws_instance" "ec2_instance" {
     Name = "sd-webui-cf"
   }
 }
+*/
 
 resource "aws_instance" "sd_webui_spot_instance" {
-  ami           = "ami-06b74af9fe7907906" // data.aws_ami.ubuntuServer_ami.id
+  ami           = "ami-02e85f615dfa5a237" // data.aws_ami.ubuntuServer_ami.id
   # instance_type Specs: 4core Intel Xeon E5-2686 v4 Processor, 61GB mem, GPU 12GiB
   instance_type = "p2.xlarge"  
-  key_name      = "sd-webui-key" 
+  key_name      = "sd-webui-key"
+  security_groups = [
+    aws_vpc_security_group_ingress_rule.allow_tls_ipv4.id
+  ] 
   instance_market_options {
     spot_options {
       max_price = 0.115
     }
   }
-
+  user_data =  <<-EOF
+                #!/bin/bash
+                
+                cd /home/ubuntu
+                sudo apt install wget git python3 python3-venv libgl1 libglib2.0-0 -y
+                mkdir stable-diffusion-webui && cd stable-diffusion-webui
+                wget -q https://raw.githubusercontent.com/degrasse-python/stable-diffusion-webui/master/webui.sh
+                git clone
+                bash stable-diffusion-webui/setup.sh -y
+              EOF
   tags = {
     Name = "SDWebUISpotInstance"
   }
 }
+
 
 resource "aws_lb" "network_load_balancer" {
   name               = "sd-webui-nlb"
