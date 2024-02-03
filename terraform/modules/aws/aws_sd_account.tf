@@ -322,7 +322,7 @@ resource "aws_elb" "s3_sd_webui_elb" {
     lb_port            = 7860
     lb_protocol        = "tcp"
     # create SSL certificate
-    ssl_certificate_id = "arn:aws:iam::123456789012:server-certificate/certName"
+    # ssl_certificate_id = "arn:aws:iam::123456789012:server-certificate/certName"
   }
 
   health_check {
@@ -364,7 +364,7 @@ resource "aws_lb_listener" "sd_webui_listener" {
   load_balancer_arn = aws_lb.network_load_balancer.arn
   port              = "7860"
   protocol          = "TCP"
-  certificate_arn = aws_acm_certificate_validation.cert.certificate_arn
+  // certificate_arn = aws_acm_certificate_validation.cert.certificate_arn
 
   default_action {
     type             = "forward"
