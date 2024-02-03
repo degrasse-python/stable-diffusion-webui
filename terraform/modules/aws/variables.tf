@@ -20,11 +20,3 @@ variable "AWS_SECRET_ACCESS_KEY" {
 }
 
 
-# Output the KMS key ID
-output "webui_lb_s3_bucket_kms_key_id" {
-  value = aws_kms_key.sd_webui_lb_s3_bucket_key.id
-}
-
-output "app_logs_bucket_kms_key_id" {
-  value = aws_kms_key.sd_webui_app_logs_bucket_key.id
-  }

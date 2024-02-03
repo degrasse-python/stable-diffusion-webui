@@ -18,9 +18,11 @@ module "aws" {
 variable "AWS_ACCESS_KEY_ID" {
     type        = string
     description = "AWS access key ID"
+    default = "value"
 }
 
 variable "AWS_SECRET_ACCESS_KEY" {
     type        = string
     description = "AWS secret access key"
+    default = "value"
 }
