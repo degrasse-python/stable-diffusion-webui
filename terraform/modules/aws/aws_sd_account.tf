@@ -5,9 +5,6 @@ provider "aws" {
 }
 
 
-
-
-
 data "aws_ami" "ubuntuServer_ami" {
   most_recent = true
   owners      = ["ubuntu"]
@@ -92,7 +89,38 @@ resource "aws_acm_certificate_validation" "cert" {
   certificate_arn         = aws_acm_certificate.cert.arn
   validation_record_fqdns = [for record in aws_route53_record.www : record.fqdn]
 }
+
+
+
+## Use Cert manager to create public tls self signing certificate
+resource "tls_private_key" "private_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "tls_self_signed_cert" "self_signed_cert" {
+  key_algorithm   = "RSA"
+  private_key_pem = tls_private_key.private_key.private_key_pem
+  subject {
+    common_name  = "example.com"
+    organization = "Example Org"
+  }
+  validity_period_hours = 12
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+}
+
+resource "aws_acm_certificate" "cert" {
+  private_key      = tls_private_key.private_key.private_key_pem
+  certificate_body = tls_self_signed_cert.self_signed_cert.cert_pem
+}
+
+
 */
+
 
 # S3 Buckets
 resource "aws_s3_bucket" "s3_sd_webui_app_logs" {
