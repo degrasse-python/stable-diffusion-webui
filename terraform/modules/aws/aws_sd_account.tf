@@ -5,23 +5,6 @@ provider "aws" {
 }
 
 
-data "aws_ami" "ubuntuServer_ami" {
-  most_recent = true
-  owners      = ["ubuntu"]
-  filter {
-    name   = "architecture"
-    values = ["arm64"]
-  }
-  filter {
-    name   = "name"
-    values = ["ami-*"]
-  }
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-}
-
 data "aws_ec2_spot_price" "example" {
   instance_type     = "p2.xlarge"
   availability_zone = "us-east-1a"
