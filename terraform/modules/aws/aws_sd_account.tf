@@ -225,12 +225,6 @@ resource "aws_vpc_security_group_ingress_rule" "allow_application_ipv4" {
 # rsa.pub for the key pair
 
 
-# Key Pair for EC2 instance
-resource "aws_key_pair" "sd_webui_key" {
-  key_name   = "sd-webui-key"
-  public_key = file("~/.ssh/id_rsa.pub")
-}
-
 # create a new EC2 instance with ubuntu server 20.04 LTS with a gpu instance type
 # and attach the security group created above to it and run the user data script 
 # to install the webui and start the server on port 7860 
@@ -258,7 +252,7 @@ resource "aws_instance" "ec2_instance" {
 }
 */
 
-resource "aws_instance" "sd_webui_spot_instance" {
+resource "aws_instance" "ec2_instance" {
   ami           = "ami-02e85f615dfa5a237" // data.aws_ami.ubuntuServer_ami.id
   # instance_type Specs: 4core Intel Xeon E5-2686 v4 Processor, 61GB mem, GPU 12GiB
   instance_type = "g4ad.xlarge" // "p2.xlarge"  
